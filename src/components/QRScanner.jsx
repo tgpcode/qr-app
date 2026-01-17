@@ -75,9 +75,9 @@ const QRScanner = () => {
         <p className="text-muted-foreground w-full max-w-xs mx-auto md:mx-0">Quét trực tiếp hoặc tải ảnh từ thư viện</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 items-center">
-        {/* Scanner Area */}
-        <div className="relative aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden bg-slate-950 border-4 border-slate-900 shadow-2xl flex items-center justify-center group ring-1 ring-white/10">
+      <div className="flex flex-col gap-6 md:gap-8 md:max-w-md md:mx-auto">
+        {/* Scanner Area - Mobile Only */}
+        <div className="relative aspect-square rounded-3xl overflow-hidden bg-slate-950 border-4 border-slate-900 shadow-2xl flex items-center justify-center group ring-1 ring-white/10 md:hidden">
 
           {/* Result Overlay */}
           <AnimatePresence>
