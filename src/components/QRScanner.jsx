@@ -63,21 +63,98 @@ const QRScanner = () => {
     fileInputRef.current?.click();
   };
 
-  const resetScan = () => {
-    setScanResult(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  // Camera Logic
+  const videoRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+        videoRef.current.play();
+        setCameraActive(true);
+        requestAnimationFrame(tick);
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast.error("Không thể mở camera", { description: "Vui lòng cấp quyền hoặc sử dụng nút 'Chụp ảnh' bên dưới." });
+    }
   };
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      setCameraActive(false);
+    }
+  };
+
+  const tick = () => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      if (code) {
+        setScanResult({ data: code.data, type: 'success' });
+        toast.success('Quét thành công!', { description: 'Đã tìm thấy mã QR.' });
+        stopCamera();
+      } else {
+        if (cameraActive) requestAnimationFrame(tick); // Continue scanning if strict active check passes, though standard logic is below
+      }
+    }
+    // Keep loop running if camera is still conceptually active
+    if (!scanResult) requestAnimationFrame(tick);
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
+
+  // Update resetScan to restart camera? Or just reset state.
+  // We'll leave resetScan simple, user can click "Start" again.
+
   return (
-    <div className="flex flex-col gap-6 md:gap-8">
+    <div className="flex flex-col gap-6 md:gap-8 mg:max-w-md md:mx-auto">
       <div className="text-center md:text-left space-y-2">
         <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Quét mã QR</h2>
         <p className="text-muted-foreground w-full max-w-xs mx-auto md:mx-0">Quét trực tiếp hoặc tải ảnh từ thư viện</p>
       </div>
 
       <div className="flex flex-col gap-6 md:gap-8 md:max-w-md md:mx-auto">
-        {/* Scanner Area - Mobile Only */}
+        {/* Scanner Area - Mobile Only - LIVE CAMERA */}
         <div className="relative aspect-square rounded-3xl overflow-hidden bg-slate-950 border-4 border-slate-900 shadow-2xl flex items-center justify-center group ring-1 ring-white/10 md:hidden">
+
+          {/* Video Element */}
+          <video
+            ref={videoRef}
+            className={cn("absolute inset-0 w-full h-full object-cover", !cameraActive && "opacity-0")}
+            muted
+            playsInline
+          />
+
+          {/* Start Camera Button Overlay */}
+          {!cameraActive && !scanResult && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+              <button
+                onClick={startCamera}
+                className="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.5)] animate-pulse"
+              >
+                <Scan size={32} className="text-white" />
+              </button>
+              <p className="text-white font-medium mt-4">Chạm để quét</p>
+            </div>
+          )}
 
           {/* Result Overlay */}
           <AnimatePresence>
@@ -103,7 +180,7 @@ const QRScanner = () => {
                 </p>
 
                 <button
-                  onClick={resetScan}
+                  onClick={() => { resetScan(); stopCamera(); }}
                   className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
                 >
                   Quét tiếp
@@ -112,40 +189,20 @@ const QRScanner = () => {
             )}
           </AnimatePresence>
 
-          {/* Background / Mock Feed */}
-          <div className="absolute inset-0 bg-black/40 z-0">
-            <div className="w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-          </div>
-
-          {/* Scanner UI Elements */}
-          {!scanResult && (
-            <div className="relative w-56 h-56 md:w-64 md:h-64 z-10">
-              <div className="absolute top-0 left-0 w-10 h-10 border-l-4 border-t-4 border-primary rounded-tl-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-              <div className="absolute top-0 right-0 w-10 h-10 border-r-4 border-t-4 border-primary rounded-tr-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-              <div className="absolute bottom-0 left-0 w-10 h-10 border-l-4 border-b-4 border-primary rounded-bl-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-              <div className="absolute bottom-0 right-0 w-10 h-10 border-r-4 border-b-4 border-primary rounded-br-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-
+          {/* Scanner UI Overlay (Lines) */}
+          {cameraActive && !scanResult && (
+            <div className="absolute inset-0 pointer-events-none z-10">
+              <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-primary/50 m-4 rounded-tl-2xl"></div>
+              <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-primary/50 m-4 rounded-tr-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-primary/50 m-4 rounded-bl-2xl"></div>
+              <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-primary/50 m-4 rounded-br-2xl"></div>
               <motion.div
-                className="absolute left-4 right-4 h-0.5 bg-primary shadow-[0_0_20px_rgba(59,130,246,0.8)]"
-                animate={{ top: ['10%', '90%', '10%'] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute left-4 right-4 h-0.5 bg-primary/80 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                animate={{ top: ['15%', '85%', '15%'] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
               />
-
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-white/10 p-4 rounded-full backdrop-blur-md ring-1 ring-white/20">
-                  <Scan className="text-white w-8 h-8 opacity-80" strokeWidth={1.5} />
-                </div>
-              </div>
             </div>
           )}
-
-          {/* Actions Bar */}
-          <div className="absolute bottom-6 inset-x-0 z-20 flex justify-center gap-4 px-6">
-            <p className="text-sm font-medium text-white bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-              Di chuyển camera đến mã QR
-            </p>
-          </div>
         </div>
 
         {/* Upload Button & Features */}
