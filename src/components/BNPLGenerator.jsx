@@ -9,7 +9,6 @@ const BNPLGenerator = () => {
      const [step, setStep] = useState('form');
      const [formData, setFormData] = useState({
           type: 'electric',
-          customerCode: '',
           amount: '',
           provider: 'EVN',
           selectedWallet: ''
@@ -19,10 +18,10 @@ const BNPLGenerator = () => {
 
      const handleSubmit = (e) => {
           e.preventDefault();
-          if (formData.customerCode && formData.amount) {
+          if (formData.amount) {
                setStep('qr');
                toast.success('Đã tạo mã QR thành công!', {
-                    description: `Mã cho khách hàng ${formData.customerCode} đã sẵn sàng.`,
+                    description: `Mã thanh toán đã sẵn sàng.`,
                });
           }
      };
@@ -32,7 +31,7 @@ const BNPLGenerator = () => {
           if (canvas) {
                const url = canvas.toDataURL("image/png");
                const link = document.createElement('a');
-               link.download = `QR-PayFlow-${formData.customerCode}.png`;
+               link.download = `QR-PayFlow-${formData.provider}.png`;
                link.href = url;
                link.click();
           }
@@ -53,7 +52,7 @@ const BNPLGenerator = () => {
 
      // VietQR-like format string (Mock for better scanning compatibility)
      // Format: SERVICE|PROVIDER|CODE|AMOUNT|NOTE
-     const qrValue = `PAY|${formData.type.toUpperCase()}|${formData.provider}|${formData.customerCode}|${formData.amount}|${formData.selectedWallet || 'ANY'}`;
+     const qrValue = `PAY|${formData.type.toUpperCase()}|${formData.provider}|CUST01|${formData.amount}|${formData.selectedWallet || 'ANY'}`;
 
      return (
           <div className="flex flex-col gap-8">
@@ -163,17 +162,7 @@ const BNPLGenerator = () => {
                                         </div>
                                    </div>
 
-                                   <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-foreground">Mã Khách Hàng</label>
-                                        <input
-                                             type="text"
-                                             className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-foreground placeholder:text-muted-foreground font-medium text-sm transition-all shadow-sm"
-                                             placeholder="Ví dụ: PE0100..."
-                                             value={formData.customerCode}
-                                             onChange={(e) => setFormData({ ...formData, customerCode: e.target.value.toUpperCase() })}
-                                             required
-                                        />
-                                   </div>
+
                               </div>
 
                               <div className="space-y-2">
@@ -262,15 +251,7 @@ const BNPLGenerator = () => {
 
                                    <div className="w-full h-px bg-border/60"></div>
 
-                                   <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground font-medium">Mã KH</span>
-                                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground bg-background px-2 py-0.5 rounded border border-border/50">
-                                             {formData.customerCode}
-                                             <Copy size={12} className="text-muted-foreground cursor-pointer hover:text-primary" />
-                                        </div>
-                                   </div>
 
-                                   <div className="w-full h-px bg-border/60"></div>
 
                                    <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground font-medium">Số tiền</span>

@@ -9,6 +9,11 @@ const QRScanner = () => {
   const [scanResult, setScanResult] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+
+  const triggerCamera = () => {
+    cameraInputRef.current?.click();
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -145,33 +150,52 @@ const QRScanner = () => {
 
         {/* Upload Button & Features */}
         <div className="flex flex-col gap-5">
-          {/* File Upload Button */}
-          {/* File Upload Button */}
+          {/* Action Buttons */}
           <div>
-            <button
-              onClick={triggerFileUpload}
-              disabled={isScanning}
-              className="w-full bg-secondary/40 hover:bg-secondary/70 text-foreground py-4 px-6 rounded-2xl flex items-center justify-center gap-4 transition-all active:scale-[0.98] border border-border/50"
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                className="hidden"
-                accept="image/*"
-              />
-              {isScanning ? (
-                <Loader2 className="animate-spin text-primary" size={24} />
-              ) : (
-                <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center text-primary shadow-sm border border-border/50 shrink-0">
-                  <ImageIcon size={22} />
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <button
+                onClick={triggerCamera}
+                disabled={isScanning}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground py-4 px-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
+              >
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Scan size={20} />
                 </div>
-              )}
-              <div className="text-left">
-                <p className="font-bold text-base">Chọn ảnh từ thư viện</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Hỗ trợ JPG, PNG</p>
-              </div>
-            </button>
+                <span className="font-bold text-sm">Chụp ảnh</span>
+              </button>
+
+              <button
+                onClick={triggerFileUpload}
+                disabled={isScanning}
+                className="bg-secondary/40 hover:bg-secondary/70 text-foreground py-4 px-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98] border border-border/50"
+              >
+                <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center text-muted-foreground shadow-sm border border-border">
+                  <ImageIcon size={20} />
+                </div>
+                <span className="font-bold text-sm">Thư viện</span>
+              </button>
+            </div>
+
+            {/* Hidden Inputs */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              className="hidden"
+              accept="image/*"
+            />
+            <input
+              type="file"
+              ref={cameraInputRef}
+              onChange={handleImageUpload}
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+            />
+
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Hỗ trợ JPG, PNG</p>
+            </div>
           </div>
 
           <div className="h-px bg-border/50 w-full" />
