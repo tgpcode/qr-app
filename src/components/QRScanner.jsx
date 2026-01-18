@@ -15,6 +15,24 @@ const QRScanner = () => {
     cameraInputRef.current?.click();
   };
 
+  const isUrlOrDeepLink = (str) => {
+    return /^(http|https|ftp|mailto|tel|sms|momo|zalopay|vnpay|viettelmoney|bankplus):/i.test(str);
+  };
+
+  const handleScanSuccess = (codeData) => {
+    if (isUrlOrDeepLink(codeData)) {
+      toast.success('Đã tìm thấy liên kết!', { description: 'Đang chuyển hướng...' });
+      setTimeout(() => {
+        window.location.href = codeData;
+      }, 500); // Small delay for user to see toast
+      stopCamera();
+    } else {
+      setScanResult({ data: codeData, type: 'success' });
+      toast.success('Quét thành công!', { description: 'Đã tìm thấy nội dung.' });
+      stopCamera();
+    }
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -36,13 +54,7 @@ const QRScanner = () => {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code) {
-          setScanResult({
-            data: code.data,
-            type: 'success'
-          });
-          toast.success('Quét ảnh thành công!', {
-            description: 'Đã tìm thấy mã QR trong ảnh của bạn.'
-          });
+          handleScanSuccess(code.data);
         } else {
           setScanResult({
             data: "Không tìm thấy mã QR trong ảnh này",
@@ -128,9 +140,7 @@ const QRScanner = () => {
       });
 
       if (code) {
-        setScanResult({ data: code.data, type: 'success' });
-        toast.success('Quét thành công!', { description: 'Đã tìm thấy mã QR.' });
-        stopCamera();
+        handleScanSuccess(code.data);
       } else {
         if (cameraActive) requestAnimationFrame(tick); // Continue scanning if strict active check passes, though standard logic is below
       }
