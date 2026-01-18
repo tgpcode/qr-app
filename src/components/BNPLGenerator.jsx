@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react'; // Switched to Canvas for download support
 import { ArrowLeft, Lightbulb, Droplets, Receipt, CheckCircle, Copy, WalletCards, ChevronDown, Download, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '../lib/utils';
+import { generateVietQR, cn } from '../lib/utils';
 
 const BNPLGenerator = () => {
      const [step, setStep] = useState('form');
@@ -50,9 +50,26 @@ const BNPLGenerator = () => {
           "Muadee", "Viettel Money", "BVBank"
      ];
 
-     // VietQR-like format string (Mock for better scanning compatibility)
-     // Format: SERVICE|PROVIDER|CODE|AMOUNT|NOTE
-     const qrValue = `PAY|${formData.type.toUpperCase()}|${formData.provider}|CUST01|${formData.amount}|${formData.selectedWallet || 'ANY'}`;
+     // Generate robust QR Content
+     const getQRValue = () => {
+          const content = `Thanh toan ${formData.type} ${formData.provider}`;
+          const amount = formData.amount || "0";
+
+          if (formData.selectedWallet === 'MoMo') {
+               // MoMo Transfer Deep Link Pattern
+               return `momo://?action=transfer&to=0354424361&amount=${amount}&comment=${encodeURIComponent(content)}`;
+          }
+
+          // Default: Generate Standard VietQR (Compatible with all Banking Apps)
+          return generateVietQR({
+               bankBin: "970422", // MBBank
+               bankNumber: "0354424361", // Demo Account
+               amount: amount,
+               content: content
+          });
+     };
+
+     const qrValue = getQRValue();
 
      return (
           <div className="flex flex-col gap-8">
