@@ -18,45 +18,33 @@ const QRScanner = () => {
   const handleScanSuccess = (codeData) => {
     // 1. Check for standard Deep Links / Protocols
     const deepLinkRegex = /^(http|https|ftp|mailto|tel|sms|momo|zalopay|vnpay|viettelmoney|bankplus|shopeepay|intent|itmss):/i;
-
-    // 2. Check for web domains without protocol (e.g. "google.com", "momo.vn")
-    // Simple regex to catch standard domain structures
     const urlLikeRegex = /^([a-z0-9-]+\.)+[a-z]{2,6}(\/.*)?$/i;
 
+    let finalData = codeData;
+    let isLink = false;
+    let linkType = 'text';
+
     if (deepLinkRegex.test(codeData)) {
-      toast.success('Đang mở ứng dụng...', { description: `Đang chuyển hướng đến: ${codeData.split(':')[0]}` });
-      setTimeout(() => {
-        window.location.href = codeData;
-      }, 700);
-      stopCamera();
-      return;
+      isLink = true;
+      linkType = 'app';
+    } else if (urlLikeRegex.test(codeData)) {
+      finalData = `https://${codeData}`;
+      isLink = true;
+      linkType = 'web';
+    } else if (codeData.startsWith('000201')) {
+      // VietQR detection
+      toast.info('Mã thanh toán VietQR', { description: 'Có thể mở bằng App Ngân hàng.' });
     }
 
-    if (urlLikeRegex.test(codeData)) {
-      const secureUrl = `https://${codeData}`;
-      toast.success('Đang mở liên kết...', { description: `Đang truy cập: ${codeData}` });
-      setTimeout(() => {
-        window.location.href = secureUrl;
-      }, 700);
-      stopCamera();
-      return;
-    }
+    setScanResult({
+      data: finalData,
+      type: 'success',
+      isLink,
+      linkType
+    });
 
-    // 3. Handle VietQR / EMVCo Standard (Starts with 000201)
-    if (codeData.startsWith('000201')) {
-      setScanResult({ data: codeData, type: 'success' });
-      toast.info('Mã VietQR cá nhân/cửa hàng', {
-        description: 'Vui lòng sử dụng App Ngân hàng để quét mã này thanh toán.',
-        duration: 5000
-      });
-      stopCamera();
-      return;
-    }
-
-    // 4. Fallback: Just Text
-    setScanResult({ data: codeData, type: 'success' });
-    toast.success('Quét thành công!', { description: 'Đã tìm thấy nội dung.' });
     stopCamera();
+    toast.success('Đã tìm thấy mã!', { description: isLink ? 'Bấm nút để mở ứng dụng/liên kết.' : 'Quét thành công.' });
   };
 
   const handleImageUpload = (e) => {
@@ -238,12 +226,28 @@ const QRScanner = () => {
                   {scanResult.data}
                 </p>
 
-                <button
-                  onClick={() => { resetScan(); stopCamera(); }}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
-                >
-                  Quét tiếp
-                </button>
+                <div className="flex flex-col gap-3 w-full">
+                  {scanResult.isLink && (
+                    <button
+                      onClick={() => window.location.href = scanResult.data}
+                      className="w-full px-6 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 active:scale-95 transition-all text-base flex items-center justify-center gap-2"
+                    >
+                      {scanResult.linkType === 'app' ? 'MỞ ỨNG DỤNG' : 'MỞ LIÊN KẾT'}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => { resetScan(); stopCamera(); }}
+                    className={cn(
+                      "w-full px-6 py-2.5 font-semibold rounded-xl transition-all active:scale-95",
+                      scanResult.isLink
+                        ? "bg-secondary hover:bg-secondary/80 text-foreground border border-border"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    )}
+                  >
+                    Quét tiếp
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
