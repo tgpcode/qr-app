@@ -15,22 +15,48 @@ const QRScanner = () => {
     cameraInputRef.current?.click();
   };
 
-  const isUrlOrDeepLink = (str) => {
-    return /^(http|https|ftp|mailto|tel|sms|momo|zalopay|vnpay|viettelmoney|bankplus):/i.test(str);
-  };
-
   const handleScanSuccess = (codeData) => {
-    if (isUrlOrDeepLink(codeData)) {
-      toast.success('Đã tìm thấy liên kết!', { description: 'Đang chuyển hướng...' });
+    // 1. Check for standard Deep Links / Protocols
+    const deepLinkRegex = /^(http|https|ftp|mailto|tel|sms|momo|zalopay|vnpay|viettelmoney|bankplus|shopeepay|intent|itmss):/i;
+
+    // 2. Check for web domains without protocol (e.g. "google.com", "momo.vn")
+    // Simple regex to catch standard domain structures
+    const urlLikeRegex = /^([a-z0-9-]+\.)+[a-z]{2,6}(\/.*)?$/i;
+
+    if (deepLinkRegex.test(codeData)) {
+      toast.success('Đang mở ứng dụng...', { description: `Đang chuyển hướng đến: ${codeData.split(':')[0]}` });
       setTimeout(() => {
         window.location.href = codeData;
-      }, 500); // Small delay for user to see toast
+      }, 700);
       stopCamera();
-    } else {
-      setScanResult({ data: codeData, type: 'success' });
-      toast.success('Quét thành công!', { description: 'Đã tìm thấy nội dung.' });
-      stopCamera();
+      return;
     }
+
+    if (urlLikeRegex.test(codeData)) {
+      const secureUrl = `https://${codeData}`;
+      toast.success('Đang mở liên kết...', { description: `Đang truy cập: ${codeData}` });
+      setTimeout(() => {
+        window.location.href = secureUrl;
+      }, 700);
+      stopCamera();
+      return;
+    }
+
+    // 3. Handle VietQR / EMVCo Standard (Starts with 000201)
+    if (codeData.startsWith('000201')) {
+      setScanResult({ data: codeData, type: 'success' });
+      toast.info('Mã VietQR cá nhân/cửa hàng', {
+        description: 'Vui lòng sử dụng App Ngân hàng để quét mã này thanh toán.',
+        duration: 5000
+      });
+      stopCamera();
+      return;
+    }
+
+    // 4. Fallback: Just Text
+    setScanResult({ data: codeData, type: 'success' });
+    toast.success('Quét thành công!', { description: 'Đã tìm thấy nội dung.' });
+    stopCamera();
   };
 
   const handleImageUpload = (e) => {
