@@ -69,19 +69,42 @@ const QRScanner = () => {
 
   const startCamera = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error("Trình duyệt không hỗ trợ", { description: "Vui lòng thử trình duyệt khác (Chrome/Safari)." });
+        return;
+      }
+
+      // Try enabling rear camera with HD resolution preference
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
-        videoRef.current.play();
+        videoRef.current.setAttribute("playsinline", true); // Critical for iOS
+        await videoRef.current.play();
         setCameraActive(true);
         requestAnimationFrame(tick);
       }
     } catch (err) {
-      console.error("Error accessing camera:", err);
-      toast.error("Không thể mở camera", { description: "Vui lòng cấp quyền hoặc sử dụng nút 'Chụp ảnh' bên dưới." });
+      console.error("Camera Error:", err);
+      // Fallback: Try opening ANY camera if specific constraints fail
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", true);
+          await videoRef.current.play();
+          setCameraActive(true);
+          requestAnimationFrame(tick);
+        }
+      } catch (fallbackErr) {
+        toast.error("Không thể mở camera", { description: "Vui lòng cho phép quyền truy cập camera trong cài đặt trình duyệt." });
+      }
     }
   };
 
