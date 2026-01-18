@@ -38,8 +38,22 @@ export function generateVietQR({ bankBin = "970422", bankNumber = "0354424361", 
      //         01 (MERCHANT_ID): [Account Number]
 
      const guid = "0010A000000727";
-     const paymentInfo = `00${guid.length}${guid}01${(bankBin.length + bankNumber.length + 4)}${`00${bankBin.length}${bankBin}01${bankNumber.length}${bankNumber}`}`;
-     frame += `38${paymentInfo.length}${paymentInfo}`;
+
+     // Sub-tag 00 (BIN) inside Tag 01
+     const binTag = `00${bankBin.length.toString().padStart(2, '0')}${bankBin}`;
+     // Sub-tag 01 (Merchant ID / Acc No) inside Tag 01
+     const accTag = `01${bankNumber.length.toString().padStart(2, '0')}${bankNumber}`;
+
+     // Tag 01 (Beneficiary Org) Value
+     const beneficiaryValue = binTag + accTag;
+     // Tag 01 Full String
+     const beneficiaryTag = `01${beneficiaryValue.length.toString().padStart(2, '0')}${beneficiaryValue}`;
+
+     // Tag 38 Value (GUID + Beneficiary Tag)
+     const paymentInfoValue = `00${guid.length.toString().padStart(2, '0')}${guid}${beneficiaryTag}`;
+
+     // Tag 38 Full String
+     frame += `38${paymentInfoValue.length.toString().padStart(2, '0')}${paymentInfoValue}`;
 
      // 53: Currency (704 - VND)
      frame += "5303704";
