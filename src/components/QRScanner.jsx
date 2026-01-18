@@ -27,6 +27,28 @@ const QRScanner = () => {
     if (deepLinkRegex.test(codeData)) {
       isLink = true;
       linkType = 'app';
+
+      // Android Intent Handling for common wallets
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        if (codeData.startsWith('momo:')) {
+          // Convert to Intent for better Android support
+          // Clean protocol part to ensure correct intent construction if needed, 
+          // but standard momo:// links usually work. 
+          // However, the most robust way is package explicit intent.
+          // Logic: keep the query params.
+          const query = codeData.split('?')[1] || '';
+          // For MoMo, simple momo:// often redirects to Play Store if not installed, 
+          // but intent scheme is safer for deep linking if installed.
+          // Let's use the standard scheme first, it's widely supported. 
+          // User asked for "Intent", so we provide the Intent string if possible.
+          // Format: intent://<path>?<query>#Intent;scheme=momo;package=com.mservice.momotransfer;end;
+          finalData = `intent://?${query}#Intent;scheme=momo;package=com.mservice.momotransfer;end`;
+        } else if (codeData.startsWith('zalopay:')) {
+          const path = codeData.split('://')[1] || '';
+          finalData = `intent://${path}#Intent;scheme=zalopay;package=vn.com.vng.zalopay;end`;
+        }
+      }
     } else if (urlLikeRegex.test(codeData)) {
       finalData = `https://${codeData}`;
       isLink = true;
@@ -141,8 +163,33 @@ const QRScanner = () => {
     }
   };
 
-  const tick = () => {
+  // ML Kit / Native Barcode Detector Support
+  const barcodeDetectorRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize BarcodeDetector if supported (Chrome Android / macOS / etc)
+    if ('BarcodeDetector' in window) {
+      // @ts-ignore
+      barcodeDetectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] });
+    }
+  }, []);
+
+  const tick = async () => {
     if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+      // 1. Try Native BarcodeDetector (ML Kit on Android)
+      if (barcodeDetectorRef.current) {
+        try {
+          const texts = await barcodeDetectorRef.current.detect(videoRef.current);
+          if (texts.length > 0) {
+            handleScanSuccess(texts[0].rawValue);
+            return;
+          }
+        } catch (err) {
+          console.warn("BarcodeDetector failed, fallback to jsQR", err);
+        }
+      }
+
+      // 2. Fallback to jsQR
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -156,11 +203,11 @@ const QRScanner = () => {
       if (code) {
         handleScanSuccess(code.data);
       } else {
-        if (cameraActive) requestAnimationFrame(tick); // Continue scanning if strict active check passes, though standard logic is below
+        if (cameraActive) requestAnimationFrame(tick);
       }
+    } else {
+      if (cameraActive) requestAnimationFrame(tick);
     }
-    // Keep loop running if camera is still conceptually active
-    if (!scanResult) requestAnimationFrame(tick);
   };
 
   // Clean up on unmount
