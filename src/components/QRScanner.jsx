@@ -28,25 +28,29 @@ const QRScanner = () => {
       isLink = true;
       linkType = 'app';
 
-      // Android Intent Handling for common wallets
-      const isAndroid = /Android/i.test(navigator.userAgent);
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /Android/i.test(userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
       if (isAndroid) {
+        // Android: Use Intent Scheme
         if (codeData.startsWith('momo:')) {
-          // Convert to Intent for better Android support
-          // Clean protocol part to ensure correct intent construction if needed, 
-          // but standard momo:// links usually work. 
-          // However, the most robust way is package explicit intent.
-          // Logic: keep the query params.
           const query = codeData.split('?')[1] || '';
-          // For MoMo, simple momo:// often redirects to Play Store if not installed, 
-          // but intent scheme is safer for deep linking if installed.
-          // Let's use the standard scheme first, it's widely supported. 
-          // User asked for "Intent", so we provide the Intent string if possible.
-          // Format: intent://<path>?<query>#Intent;scheme=momo;package=com.mservice.momotransfer;end;
           finalData = `intent://?${query}#Intent;scheme=momo;package=com.mservice.momotransfer;end`;
         } else if (codeData.startsWith('zalopay:')) {
           const path = codeData.split('://')[1] || '';
           finalData = `intent://${path}#Intent;scheme=zalopay;package=vn.com.vng.zalopay;end`;
+        }
+      } else if (isIOS) {
+        // iOS: Use Custom URL Scheme directly (e.g. momo://, zalopay://)
+        // No modification needed usually, but we ensure cleanliness.
+        // Note: iOS will prompt "Open this page in 'MoMo'?" automatically when clicked.
+        if (codeData.startsWith('momo:')) {
+          // Ensure we use the raw scheme for iOS
+          finalData = codeData;
+        }
+        if (codeData.startsWith('zalopay:')) {
+          finalData = codeData;
         }
       }
     } else if (urlLikeRegex.test(codeData)) {
