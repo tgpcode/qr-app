@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scan, Wallet, CreditCard, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import jsQR from 'jsqr';
